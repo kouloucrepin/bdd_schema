@@ -1,0 +1,484 @@
+
+<style>
+body{margin:0;padding:0;font-family:"Anthropic Sans",sans-serif;background:transparent}
+#hint{font-size:12px;color:#888;padding:6px 2px 10px}
+#erd svg{width:100%;cursor:default}
+#legend{display:none;margin-top:12px;padding:12px 16px;background:rgba(0,0,0,0.03);border-radius:10px;font-size:12px;color:#555;border:0.5px solid #ddd}
+</style>
+<div id="hint">Survoler une table pour voir ses relations • Cliquer pour verrouiller</div>
+<div id="erd"></div>
+<div id="legend"></div>
+<script type="module">
+import mermaid from 'https://esm.sh/mermaid@11/dist/mermaid.esm.min.mjs';
+const dark=window.matchMedia('(prefers-color-scheme:dark)').matches;
+
+const C={
+  selected:{fill:dark?'#0C447C':'#dbeeff',stroke:'#185FA5',text:dark?'#B5D4F4':'#0C447C',sw:'2.5'},
+  related:{fill:dark?'#085041':'#dcf5ec',stroke:'#1D9E75',text:dark?'#9FE1CB':'#085041',sw:'2'},
+  dimmed:{fill:dark?'#111':'#f7f7f5',stroke:dark?'#252523':'#e2e2de',text:dark?'#2e2e2c':'#c8c8c4',sw:'0.5'},
+  default:{fill:dark?'#1e1e1e':'#f8f8f6',stroke:dark?'#444':'#ccc',text:dark?'#c2c0b6':'#3d3d3a',sw:'1'},
+};
+const EON=dark?'#1D9E75':'#0F6E56',EOFF=dark?'#1c1c1a':'#ebebE6';
+
+const RELS=[
+['roles','users','1 → N','définit'],
+['lieux','beneficiaires','1 → N','localise'],
+['lieux','prestataires','1 → N','localise'],
+['lieux','formateurs','1 → N','localise'],
+['lieux','classes','1 → N','accueille'],
+['formations','formateurs','1 → N','forme'],
+['formations','prestations','1 → N','porte'],
+['prestataires','prestations','1 → N','exécute'],
+['beneficiaires','prestations','1 → N','commande'],
+['beneficiaires','apprenants','1 → N','accueille'],
+['prestations','classes','1 → N','organise'],
+['formateurs','classes','1 → N','anime'],
+['classes','apprenants','1 → N','contient'],
+['apprenants','appels','1 → N','reçoit'],
+['users','appels','1 → N','passe'],
+['appels','audio','1 → N','génère'],
+['appels','satisfaction_apprenants','1 → 1','produit'],
+['appels','satisfaction_formateurs','1 → 1','produit'],
+['formateurs','satisfaction_formateurs','1 → N','évalué par'],
+['inspecteurs','satisfaction_apprenants','1 → N','supervise'],
+['inspecteurs','satisfaction_formateurs','1 → N','supervise'],
+['inspecteurs','presences_controle','1 → N','supervise'],
+['inspecteurs','environnement_enquete','1 → N','supervise'],
+['users','satisfaction_apprenants','1 → N','réalise'],
+['users','satisfaction_formateurs','1 → N','réalise'],
+['classes','satisfaction_apprenants','1 → N','concerne'],
+['classes','satisfaction_formateurs','1 → N','concerne'],
+['apprenants','presences_controle','1 → N','contrôle'],
+['classes','presences_controle','1 → N','concerne'],
+['users','presences_controle','1 → N','effectue'],
+['classes','environnement_enquete','1 → N','évaluée'],
+['users','environnement_enquete','1 → N','réalise'],
+['prestations','analyses','1 → N','analysée'],
+['classes','analyses','1 → N','analysée'],
+['analyses','indicateurs','1 → N','produit'],
+['users','messaging_campagne_message','1 → N','lance'],
+['apprenants','messaging_campagne_message','1 → N','ciblé'],
+['users','messaging_support_alarm','1 → N','signale'],
+];
+
+function nbrs(n){const s=new Set();for(const[a,b]of RELS){if(a===n)s.add(b);if(b===n)s.add(a);}return s;}
+function relsFor(n){return RELS.filter(([a,b])=>a===n||b===n);}
+
+await document.fonts.ready;
+mermaid.initialize({startOnLoad:false,theme:'base',fontFamily:'"Anthropic Sans",sans-serif',
+themeVariables:{darkMode:dark,fontSize:'12px',fontFamily:'"Anthropic Sans",sans-serif',
+lineColor:dark?'#9c9a92':'#73726c',textColor:dark?'#c2c0b6':'#3d3d3a',
+primaryColor:dark?'#1e1e1e':'#f8f8f6',primaryBorderColor:dark?'#444':'#ccc'}});
+
+const diagram=`erDiagram
+  roles {
+    VARCHAR role_id PK
+    VARCHAR nom_role
+    TEXT description
+  }
+  users {
+    VARCHAR user_id PK
+    VARCHAR role_id FK
+    VARCHAR nom_prenom
+    CHAR genre
+    VARCHAR telephone
+    VARCHAR email
+    VARCHAR ville
+    VARCHAR departement
+    VARCHAR password
+    BOOLEAN is_active
+    TIMESTAMPTZ created_at
+    TIMESTAMPTZ updated_at
+  }
+  inspecteurs {
+    VARCHAR inspecteur_id PK
+    VARCHAR nom_prenom
+    CHAR genre
+    VARCHAR telephone
+    VARCHAR email
+    VARCHAR ville
+    VARCHAR departement
+    VARCHAR num_cni
+  }
+  lieux {
+    VARCHAR lieu_id PK
+    VARCHAR nom_lieu
+    VARCHAR ville
+    VARCHAR arrondissement
+    VARCHAR departement
+    VARCHAR region
+    NUMERIC gps_lat
+    NUMERIC gps_lon
+    VARCHAR precision
+  }
+  beneficiaires {
+    VARCHAR beneficiaire_id PK
+    VARCHAR nom_beneficiaire
+    VARCHAR nom_simplifie
+    VARCHAR telephone
+    VARCHAR email
+    VARCHAR lieu_id FK
+  }
+  prestataires {
+    VARCHAR prestataire_id PK
+    VARCHAR nom_prestataire
+    VARCHAR nom_simplifie
+    VARCHAR nom_responsable
+    VARCHAR telephone1
+    VARCHAR telephone2
+    VARCHAR email
+    VARCHAR lieu_id FK
+  }
+  formations {
+    VARCHAR formation_id PK
+    VARCHAR code
+    VARCHAR nom_formation
+    VARCHAR nom_formation_harmonise
+    VARCHAR code_padesce
+    INTEGER effectif_a_former
+    INTEGER femmes
+    NUMERIC cout_unitaire_psoaf
+    NUMERIC montant_psoaf_ttc
+    NUMERIC cout_unitaire_mcdc_ttc
+    NUMERIC montant_mcdc_ttc
+    NUMERIC duree_prevue_heures
+    NUMERIC duree_reelle_heures
+    TEXT jalons_contractuels
+    BOOLEAN actif
+  }
+  formateurs {
+    VARCHAR formateur_id PK
+    VARCHAR formation_id FK
+    VARCHAR lieu_id FK
+    VARCHAR nom_formateur
+    VARCHAR telephone
+    VARCHAR email
+    VARCHAR ville
+  }
+  prestations {
+    VARCHAR prestation_id PK
+    VARCHAR prestataire_id FK
+    VARCHAR beneficiaire_id FK
+    VARCHAR formation_id FK
+    VARCHAR fenetre
+    INTEGER nb_apprenants_objectifs
+    INTEGER nb_apprenants_femme
+    INTEGER nb_apprenants_inscrits
+    NUMERIC taux_inscription
+    NUMERIC taux_avancement
+    NUMERIC taux_presence
+    NUMERIC taux_participation
+    VARCHAR statut
+    DATE date_demarrage
+    DATE date_fin
+    NUMERIC cout_unitaire
+    NUMERIC montant_total
+  }
+  classes {
+    VARCHAR classe_id PK
+    VARCHAR prestation_id FK
+    VARCHAR formateur_id FK
+    VARCHAR lieu_id FK
+    VARCHAR cohorte
+    VARCHAR statut
+    NUMERIC taux_presence
+    NUMERIC taux_participation
+  }
+  apprenants {
+    VARCHAR apprenant_id PK
+    VARCHAR beneficiaire_id FK
+    VARCHAR classe_id FK
+    VARCHAR cohorte
+    VARCHAR nom_prenom
+    CHAR genre
+    VARCHAR fonction
+    VARCHAR qualification
+    INTEGER experience_annees
+    VARCHAR ville_residence
+    VARCHAR statut_apprenant
+    VARCHAR tel1
+    VARCHAR tel2
+    VARCHAR code_apprenant
+  }
+  appels {
+    VARCHAR appel_id PK
+    VARCHAR apprenant_id FK
+    VARCHAR user_id FK
+    DATE date_appel
+    VARCHAR statut_appel
+  }
+  audio {
+    VARCHAR audio_id PK
+    VARCHAR appel_id FK
+    TEXT fichier_audio
+    DATE date
+    TIME heure_debut
+    TIME heure_fin
+    INTEGER duree_secondes
+  }
+  satisfaction_apprenants {
+    VARCHAR id PK
+    VARCHAR appel_id FK
+    VARCHAR inspecteur_id FK
+    VARCHAR user_id FK
+    VARCHAR classe_id FK
+    SMALLINT q1_clarte_exposes
+    SMALLINT q2_interaction_formateur
+    SMALLINT q3_maitrise_contenu
+    SMALLINT q4_salle_adequate
+    SMALLINT q5_materiel_disponible
+    SMALLINT q6_organisation_temps
+    SMALLINT q7_utilite_formation
+    SMALLINT q8_adequation_besoins
+    SMALLINT q9_satisfaction_globale
+    TEXT commentaire
+    TEXT recommandations
+  }
+  satisfaction_formateurs {
+    VARCHAR id PK
+    VARCHAR appel_id FK
+    VARCHAR formateur_id FK
+    VARCHAR inspecteur_id FK
+    VARCHAR user_id FK
+    VARCHAR classe_id FK
+    SMALLINT q1_prerequis_apprenants
+    SMALLINT q2_interaction_apprenants
+    SMALLINT q3_competences_acquises
+    SMALLINT q4_gestion_administrative
+    SMALLINT q5_gestion_financiere
+    SMALLINT q6_communication
+    TEXT commentaires
+    TEXT recommandations
+  }
+  presences_controle {
+    VARCHAR id PK
+    VARCHAR apprenant_id FK
+    VARCHAR classe_id FK
+    VARCHAR user_id FK
+    VARCHAR inspecteur_id FK
+    DATE date
+    TIME heure_debut
+    TIME heure_fin
+    BOOLEAN presence
+    VARCHAR statut
+    VARCHAR conformite
+    VARCHAR theme_seance
+    VARCHAR type_controle
+    VARCHAR moyen_enregistrement
+    VARCHAR nom_formateur1
+    VARCHAR telephone_formateur1
+    NUMERIC duree_prevue_formation
+  }
+  environnement_enquete {
+    VARCHAR id PK
+    VARCHAR classe_id FK
+    VARCHAR user_id FK
+    VARCHAR inspecteur_id FK
+    DATE date
+    TIME heure_enregistrement
+    SMALLINT tables
+    SMALLINT chaises
+    SMALLINT ecran
+    SMALLINT videoprojecteur
+    SMALLINT ventilation
+    SMALLINT eclairage
+    SMALLINT aeration
+    SMALLINT prises_electriques
+    SMALLINT salle_propre
+    SMALLINT salle_accessible
+    SMALLINT salle_securisee
+    SMALLINT signaletique
+    SMALLINT commodite
+    SMALLINT accessibilite
+    SMALLINT securite
+    SMALLINT acces_eau
+    TEXT commentaire_salle
+    TEXT commentaire_global
+  }
+  analyses {
+    VARCHAR analyse_id PK
+    VARCHAR classe_id FK
+    VARCHAR prestation_id FK
+    VARCHAR type_analyse
+    DATE date_calcul
+    TIMESTAMPTZ created_at
+  }
+  indicateurs {
+    VARCHAR indicateur_id PK
+    VARCHAR analyse_id FK
+    VARCHAR nom_indicateur
+    VARCHAR categorie
+    NUMERIC valeur
+    NUMERIC valeur_cible
+    NUMERIC taux_atteinte
+    TEXT description
+  }
+  messaging_campagne_message {
+    VARCHAR id PK
+    VARCHAR user_id FK
+    VARCHAR cible_apprenant_id FK
+    TIMESTAMPTZ date_heure
+    TEXT texte
+    TEXT cible_description
+    JSONB message_envoye_json
+    JSONB message_rejete_json
+    TEXT motif_rejet
+  }
+  messaging_support_alarm {
+    VARCHAR id PK
+    VARCHAR module
+    VARCHAR title
+    TEXT details
+    BOOLEAN is_seen
+    TIMESTAMPTZ seen_at
+    VARCHAR seen_by_id FK
+    BOOLEAN is_resolved
+    TIMESTAMPTZ resolved_at
+    VARCHAR resolved_by_id FK
+    VARCHAR reporter_id FK
+    TIMESTAMPTZ created_at
+    TIMESTAMPTZ updated_at
+  }
+  roles ||--o{ users : "definit"
+  lieux ||--o{ beneficiaires : "localise"
+  lieux ||--o{ prestataires : "localise"
+  lieux ||--o{ formateurs : "localise"
+  lieux ||--o{ classes : "accueille"
+  formations ||--o{ formateurs : "forme"
+  formations ||--o{ prestations : "porte"
+  prestataires ||--o{ prestations : "execute"
+  beneficiaires ||--o{ prestations : "commande"
+  beneficiaires ||--o{ apprenants : "accueille"
+  prestations ||--o{ classes : "organise"
+  formateurs ||--o{ classes : "anime"
+  classes ||--o{ apprenants : "contient"
+  apprenants ||--o{ appels : "recoit"
+  users ||--o{ appels : "passe"
+  appels ||--o{ audio : "genere"
+  appels ||--o| satisfaction_apprenants : "produit"
+  appels ||--o| satisfaction_formateurs : "produit"
+  formateurs ||--o{ satisfaction_formateurs : "evalue"
+  inspecteurs ||--o{ satisfaction_apprenants : "supervise"
+  inspecteurs ||--o{ satisfaction_formateurs : "supervise"
+  inspecteurs ||--o{ presences_controle : "supervise"
+  inspecteurs ||--o{ environnement_enquete : "supervise"
+  users ||--o{ satisfaction_apprenants : "realise"
+  users ||--o{ satisfaction_formateurs : "realise"
+  classes ||--o{ satisfaction_apprenants : "concerne"
+  classes ||--o{ satisfaction_formateurs : "concerne"
+  apprenants ||--o{ presences_controle : "controle"
+  classes ||--o{ presences_controle : "concerne"
+  users ||--o{ presences_controle : "effectue"
+  classes ||--o{ environnement_enquete : "evaluee"
+  users ||--o{ environnement_enquete : "realise"
+  prestations ||--o{ analyses : "analysee"
+  classes ||--o{ analyses : "analysee"
+  analyses ||--o{ indicateurs : "produit"
+  users ||--o{ messaging_campagne_message : "lance"
+  apprenants ||--o{ messaging_campagne_message : "cible"
+  users ||--o{ messaging_support_alarm : "signale"
+`;
+
+const{svg}=await mermaid.render('erd-svg',diagram);
+document.getElementById('erd').innerHTML=svg;
+
+// round corners
+document.querySelectorAll('#erd svg .node').forEach(nd=>{
+  const fp=nd.querySelector('path[d]');if(!fp)return;
+  const nums=fp.getAttribute('d').match(/-?[\d.]+/g)?.map(Number);
+  if(!nums||nums.length<8)return;
+  const xs=[nums[0],nums[2],nums[4],nums[6]],ys=[nums[1],nums[3],nums[5],nums[7]];
+  const x=Math.min(...xs),y=Math.min(...ys),w=Math.max(...xs)-x,h=Math.max(...ys)-y;
+  const r=document.createElementNS('http://www.w3.org/2000/svg','rect');
+  r.setAttribute('x',x);r.setAttribute('y',y);r.setAttribute('width',w);r.setAttribute('height',h);r.setAttribute('rx','8');
+  for(const a of['fill','stroke','stroke-width','class','style'])if(fp.hasAttribute(a))r.setAttribute(a,fp.getAttribute(a));
+  fp.replaceWith(r);
+});
+document.querySelectorAll('#erd svg .row-rect-odd path,.row-rect-even path').forEach(p=>p.setAttribute('stroke','none'));
+
+// pointer events
+document.querySelectorAll('#erd svg .node, #erd svg .node *').forEach(el=>{el.style.pointerEvents='all';});
+
+// node map
+const nodeMap={};
+document.querySelectorAll('#erd svg .node').forEach(nd=>{
+  const l=nd.querySelector('text');if(!l)return;
+  const name=l.textContent.trim().toLowerCase().replace(/\s+/g,'_');
+  nodeMap[name]=nd;nd.dataset.tn=name;
+});
+
+// edge map
+const edgeMap=[];
+const allEP=[...document.querySelectorAll('#erd svg .edgePaths path,#erd svg .edgePath path')];
+allEP.forEach((p,i)=>{if(i<RELS.length)edgeMap.push({el:p,a:RELS[i][0],b:RELS[i][1]});});
+
+// style
+function sN(nd,c){
+  const r=nd.querySelector('rect');
+  if(r){r.setAttribute('fill',c.fill);r.setAttribute('stroke',c.stroke);r.setAttribute('stroke-width',c.sw);}
+  nd.querySelectorAll('text').forEach(t=>t.setAttribute('fill',c.text));
+}
+function sE(name,nb){
+  edgeMap.forEach(({el,a,b})=>{
+    const on=(a===name&&nb.has(b))||(b===name&&nb.has(a));
+    el.setAttribute('stroke',on?EON:EOFF);
+    el.setAttribute('stroke-width',on?'2.5':'0.6');
+    el.setAttribute('opacity',on?'1':'0.07');
+  });
+}
+function resetAll(){
+  Object.values(nodeMap).forEach(nd=>sN(nd,C.default));
+  edgeMap.forEach(({el})=>{el.removeAttribute('stroke');el.removeAttribute('stroke-width');el.removeAttribute('opacity');});
+  document.getElementById('legend').style.display='none';
+}
+
+function doHL(name){
+  const nb=nbrs(name);
+  Object.entries(nodeMap).forEach(([n,nd])=>{sN(nd,n===name?C.selected:nb.has(n)?C.related:C.dimmed);});
+  sE(name,nb);
+  const box=document.getElementById('legend');
+  const selBg=dark?'#0C447C':'#dbeeff',selClr=dark?'#B5D4F4':'#0C447C';
+  const relBg=dark?'#0a3d27':'#dcf5ec',relClr=dark?'#9FE1CB':'#085041';
+  const cardBg=dark?'#1a3a2a':'#c8eddc';
+  const myR=relsFor(name);
+  const rows=myR.map(([a,b,card,label])=>{
+    const other=a===name?b:a;
+    const arrow=a===name?'→':'←';
+    return `<div style="display:flex;align-items:center;gap:8px;padding:3px 0;border-bottom:0.5px solid ${dark?'#1e1e1c':'#eee'}">
+      <span style="color:${dark?'#555':'#ccc'};font-size:13px">${arrow}</span>
+      <span style="background:${relBg};color:${relClr};border-radius:20px;padding:1px 9px;font-family:monospace;font-size:11px">${other}</span>
+      <span style="background:${cardBg};color:${relClr};border-radius:6px;padding:1px 7px;font-size:10px;font-family:monospace">${card}</span>
+      <span style="color:${dark?'#555':'#bbb'};font-size:11px;font-style:italic">${label}</span>
+    </div>`;
+  }).join('');
+  box.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+    <span style="background:${selBg};color:${selClr};border-radius:20px;padding:2px 12px;font-family:monospace;font-size:13px;font-weight:600">${name}</span>
+    <span style="color:${dark?'#555':'#ccc'};font-size:11px">${myR.length} relation${myR.length>1?'s':''}</span>
+    ${locked===name?`<span style="background:${dark?'#3a2800':'#fff8e6'};color:${dark?'#ffcc66':'#a06000'};border-radius:20px;padding:1px 8px;font-size:10px">🔒 verrouillé</span>`:''}
+  </div><div>${rows}</div>`;
+  box.style.display='block';
+  if(dark){box.style.background='rgba(255,255,255,0.03)';box.style.borderColor='#2a2a28';box.style.color='#888';}
+}
+
+function findTN(t){let el=t;while(el&&el!==document){if(el.classList&&el.classList.contains('node')&&el.dataset.tn)return el.dataset.tn;el=el.parentElement;}return null;}
+
+let locked=null,hovered=null;
+const svgEl=document.querySelector('#erd svg');
+if(svgEl){
+  svgEl.addEventListener('mousemove',e=>{
+    if(locked)return;
+    const name=findTN(e.target);
+    if(name===hovered)return;
+    hovered=name;
+    name?doHL(name):resetAll();
+  });
+  svgEl.addEventListener('mouseleave',()=>{if(locked)return;hovered=null;resetAll();});
+  svgEl.addEventListener('click',e=>{
+    e.stopPropagation();
+    const name=findTN(e.target);
+    if(!name){if(locked){locked=null;hovered=null;resetAll();}return;}
+    if(locked===name){locked=null;hovered=null;resetAll();}
+    else{locked=name;doHL(name);}
+  });
+}
+</script>
