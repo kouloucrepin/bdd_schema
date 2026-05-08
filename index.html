@@ -1,8 +1,9 @@
+
 <style>
-body{margin:0;padding:0;font-family:"Anthropic Sans",sans-serif;background:transparent;color:#000}
-#hint{font-size:12px;color:#000;padding:6px 2px 10px}
+body{margin:0;padding:0;font-family:"Anthropic Sans",sans-serif;background:transparent}
+#hint{font-size:12px;color:#888;padding:6px 2px 10px}
 #erd svg{width:100%;cursor:default}
-#legend{display:none;margin-top:12px;padding:12px 16px;background:rgba(0,0,0,0.03);border-radius:10px;font-size:12px;color:#000;border:0.5px solid #ddd}
+#legend{display:none;margin-top:12px;padding:12px 16px;background:rgba(0,0,0,0.03);border-radius:10px;font-size:12px;color:#555;border:0.5px solid #ddd}
 </style>
 <div id="hint">Survoler une table pour voir ses relations • Cliquer pour verrouiller</div>
 <div id="erd"></div>
@@ -10,7 +11,6 @@ body{margin:0;padding:0;font-family:"Anthropic Sans",sans-serif;background:trans
 <script type="module">
 import mermaid from 'https://esm.sh/mermaid@11/dist/mermaid.esm.min.mjs';
 const dark=window.matchMedia('(prefers-color-scheme:dark)').matches;
-
 const C={
   selected:{fill:dark?'#0C447C':'#dbeeff',stroke:'#185FA5',text:dark?'#B5D4F4':'#0C447C',sw:'2.5'},
   related:{fill:dark?'#085041':'#dcf5ec',stroke:'#1D9E75',text:dark?'#9FE1CB':'#085041',sw:'2'},
@@ -52,8 +52,8 @@ const RELS=[
 ['users','presences_controle','1 → N','effectue'],
 ['classes','environnement_enquete','1 → N','évaluée'],
 ['users','environnement_enquete','1 → N','réalise'],
-['prestations','analyses','1 → N','analysée'],
-['classes','analyses','1 → N','analysée'],
+['classes','analyse_classe','1 → N','analysée'],
+['prestations','analyse_prestation','1 → N','analysée'],
 ['users','messaging_campagne_message','1 → N','lance'],
 ['apprenants','messaging_campagne_message','1 → N','ciblé'],
 ['users','messaging_support_alarm','1 → N','signale'],
@@ -293,14 +293,24 @@ const diagram=`erDiagram
     TEXT commentaire_salle
     TEXT commentaire_global
   }
-  analyses {
+  analyse_classe {
     VARCHAR analyse_id PK
     VARCHAR classe_id FK
+    VARCHAR type_analyse
+    DATE date_calcul
+    VARCHAR nom_indicateur
+    NUMERIC valeur
+    NUMERIC valeur_cible
+    NUMERIC taux_atteinte
+    TEXT description
+    TIMESTAMPTZ created_at
+  }
+  analyse_prestation {
+    VARCHAR analyse_id PK
     VARCHAR prestation_id FK
     VARCHAR type_analyse
     DATE date_calcul
     VARCHAR nom_indicateur
-    VARCHAR categorie
     NUMERIC valeur
     NUMERIC valeur_cible
     NUMERIC taux_atteinte
@@ -365,8 +375,8 @@ const diagram=`erDiagram
   users ||--o{ presences_controle : "effectue"
   classes ||--o{ environnement_enquete : "evaluee"
   users ||--o{ environnement_enquete : "realise"
-  prestations ||--o{ analyses : "analysee"
-  classes ||--o{ analyses : "analysee"
+  classes ||--o{ analyse_classe : "analysee"
+  prestations ||--o{ analyse_prestation : "analysee"
   users ||--o{ messaging_campagne_message : "lance"
   apprenants ||--o{ messaging_campagne_message : "cible"
   users ||--o{ messaging_support_alarm : "signale"
@@ -375,7 +385,6 @@ const diagram=`erDiagram
 const{svg}=await mermaid.render('erd-svg',diagram);
 document.getElementById('erd').innerHTML=svg;
 
-// round corners
 document.querySelectorAll('#erd svg .node').forEach(nd=>{
   const fp=nd.querySelector('path[d]');if(!fp)return;
   const nums=fp.getAttribute('d').match(/-?[\d.]+/g)?.map(Number);
@@ -388,11 +397,8 @@ document.querySelectorAll('#erd svg .node').forEach(nd=>{
   fp.replaceWith(r);
 });
 document.querySelectorAll('#erd svg .row-rect-odd path,.row-rect-even path').forEach(p=>p.setAttribute('stroke','none'));
-
-// pointer events
 document.querySelectorAll('#erd svg .node, #erd svg .node *').forEach(el=>{el.style.pointerEvents='all';});
 
-// node map
 const nodeMap={};
 document.querySelectorAll('#erd svg .node').forEach(nd=>{
   const l=nd.querySelector('text');if(!l)return;
@@ -400,12 +406,10 @@ document.querySelectorAll('#erd svg .node').forEach(nd=>{
   nodeMap[name]=nd;nd.dataset.tn=name;
 });
 
-// edge map
 const edgeMap=[];
 const allEP=[...document.querySelectorAll('#erd svg .edgePaths path,#erd svg .edgePath path')];
 allEP.forEach((p,i)=>{if(i<RELS.length)edgeMap.push({el:p,a:RELS[i][0],b:RELS[i][1]});});
 
-// style
 function sN(nd,c){
   const r=nd.querySelector('rect');
   if(r){r.setAttribute('fill',c.fill);r.setAttribute('stroke',c.stroke);r.setAttribute('stroke-width',c.sw);}
