@@ -33,6 +33,9 @@ const RELS=[
 ['prestations','classes','1 → N','organise'],
 ['formateurs','classes','1 → N','anime'],
 ['classes','apprenants','1 → N','contient'],
+['phases','apprenants','1 → N','affecte'],
+['phases','prestations','1 → N','découpe'],
+['phases','classes','1 → N','structure'],
 ['apprenants','appels','1 → N','reçoit'],
 ['users','appels','1 → N','passe'],
 ['appels','audio','1 → N','génère'],
@@ -181,6 +184,16 @@ const diagram=`erDiagram
     VARCHAR statut
     NUMERIC taux_presence
     NUMERIC taux_participation
+  }
+  phases {
+    VARCHAR phase_id PK
+    VARCHAR prestation_id FK
+    VARCHAR classe_id FK
+    VARCHAR apprenant_id FK
+    INTEGER numero_phase
+    VARCHAR nom_phase
+    DATE date_debut
+    DATE date_fin
   }
   apprenants {
     VARCHAR apprenant_id PK
@@ -356,6 +369,9 @@ const diagram=`erDiagram
   prestations ||--o{ classes : "organise"
   formateurs ||--o{ classes : "anime"
   classes ||--o{ apprenants : "contient"
+  phases ||--o{ apprenants : "affecte"
+  phases ||--o{ prestations : "decoupe"
+  phases ||--o{ classes : "structure"
   apprenants ||--o{ appels : "recoit"
   users ||--o{ appels : "passe"
   appels ||--o{ audio : "genere"
@@ -428,7 +444,6 @@ function resetAll(){
   edgeMap.forEach(({el})=>{el.removeAttribute('stroke');el.removeAttribute('stroke-width');el.removeAttribute('opacity');});
   document.getElementById('legend').style.display='none';
 }
-
 function doHL(name){
   const nb=nbrs(name);
   Object.entries(nodeMap).forEach(([n,nd])=>{sN(nd,n===name?C.selected:nb.has(n)?C.related:C.dimmed);});
@@ -456,7 +471,6 @@ function doHL(name){
   box.style.display='block';
   if(dark){box.style.background='rgba(255,255,255,0.03)';box.style.borderColor='#2a2a28';box.style.color='#888';}
 }
-
 function findTN(t){let el=t;while(el&&el!==document){if(el.classList&&el.classList.contains('node')&&el.dataset.tn)return el.dataset.tn;el=el.parentElement;}return null;}
 
 let locked=null,hovered=null;
