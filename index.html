@@ -33,26 +33,20 @@ const RELS=[
 ['prestations','classes','1 → N','organise'],
 ['formateurs','classes','1 → N','anime'],
 ['classes','apprenants','1 → N','contient'],
-['phases','apprenants','1 → N','affecte'],
-['phases','prestations','1 → N','découpe'],
-['phases','classes','1 → N','structure'],
-['apprenants','appels','1 → N','reçoit'],
-['users','appels','1 → N','passe'],
-['appels','audio','1 → N','génère'],
-['appels','satisfaction_apprenants','1 → 1','produit'],
-['appels','satisfaction_formateurs','1 → 1','produit'],
-['formateurs','satisfaction_formateurs','1 → N','évalué par'],
-['inspecteurs','satisfaction_apprenants','1 → N','supervise'],
-['inspecteurs','satisfaction_formateurs','1 → N','supervise'],
-['inspecteurs','presences_controle','1 → N','supervise'],
-['inspecteurs','environnement_enquete','1 → N','supervise'],
-['users','satisfaction_apprenants','1 → N','réalise'],
-['users','satisfaction_formateurs','1 → N','réalise'],
-['classes','satisfaction_apprenants','1 → N','concerne'],
-['classes','satisfaction_formateurs','1 → N','concerne'],
+['apprenants','phases','1 → N','traverse'],
+['apprenants','appel_apprenant','1 → N','reçoit'],
+['users','appel_apprenant','1 → N','passe'],
+['formateurs','appel_formateur','1 → N','reçoit'],
+['users','appel_formateur','1 → N','passe'],
+['appel_apprenant','audio','1 → N','génère'],
+['appel_formateur','audio','1 → N','génère'],
+['appel_apprenant','satisfaction_apprenants','1 → 1','produit'],
+['appel_formateur','satisfaction_formateurs','1 → 1','produit'],
 ['apprenants','presences_controle','1 → N','contrôle'],
 ['classes','presences_controle','1 → N','concerne'],
 ['users','presences_controle','1 → N','effectue'],
+['inspecteurs','presences_controle','1 → N','supervise'],
+['inspecteurs','environnement_enquete','1 → N','supervise'],
 ['classes','environnement_enquete','1 → N','évaluée'],
 ['users','environnement_enquete','1 → N','réalise'],
 ['classes','analyse_classe','1 → N','analysée'],
@@ -185,16 +179,6 @@ const diagram=`erDiagram
     NUMERIC taux_presence
     NUMERIC taux_participation
   }
-  phases {
-    VARCHAR phase_id PK
-    VARCHAR prestation_id FK
-    VARCHAR classe_id FK
-    VARCHAR apprenant_id FK
-    INTEGER numero_phase
-    VARCHAR nom_phase
-    DATE date_debut
-    DATE date_fin
-  }
   apprenants {
     VARCHAR apprenant_id PK
     VARCHAR beneficiaire_id FK
@@ -211,16 +195,32 @@ const diagram=`erDiagram
     VARCHAR tel2
     VARCHAR code_apprenant
   }
-  appels {
+  phases {
+    VARCHAR id PK
+    VARCHAR apprenant_id FK
+    INTEGER numero_phase
+    VARCHAR nom_phase
+    DATE date_debut
+    DATE date_fin
+  }
+  appel_apprenant {
     VARCHAR appel_id PK
     VARCHAR apprenant_id FK
     VARCHAR user_id FK
     DATE date_appel
     VARCHAR statut_appel
   }
+  appel_formateur {
+    VARCHAR appel_id PK
+    VARCHAR formateur_id FK
+    VARCHAR user_id FK
+    DATE date_appel
+    VARCHAR statut_appel
+  }
   audio {
     VARCHAR audio_id PK
-    VARCHAR appel_id FK
+    VARCHAR appel_apprenant_id FK
+    VARCHAR appel_formateur_id FK
     TEXT fichier_audio
     DATE date
     TIME heure_debut
@@ -230,9 +230,6 @@ const diagram=`erDiagram
   satisfaction_apprenants {
     VARCHAR id PK
     VARCHAR appel_id FK
-    VARCHAR inspecteur_id FK
-    VARCHAR user_id FK
-    VARCHAR classe_id FK
     SMALLINT q1_clarte_exposes
     SMALLINT q2_interaction_formateur
     SMALLINT q3_maitrise_contenu
@@ -248,10 +245,6 @@ const diagram=`erDiagram
   satisfaction_formateurs {
     VARCHAR id PK
     VARCHAR appel_id FK
-    VARCHAR formateur_id FK
-    VARCHAR inspecteur_id FK
-    VARCHAR user_id FK
-    VARCHAR classe_id FK
     SMALLINT q1_prerequis_apprenants
     SMALLINT q2_interaction_apprenants
     SMALLINT q3_competences_acquises
@@ -369,26 +362,20 @@ const diagram=`erDiagram
   prestations ||--o{ classes : "organise"
   formateurs ||--o{ classes : "anime"
   classes ||--o{ apprenants : "contient"
-  phases ||--o{ apprenants : "affecte"
-  phases ||--o{ prestations : "decoupe"
-  phases ||--o{ classes : "structure"
-  apprenants ||--o{ appels : "recoit"
-  users ||--o{ appels : "passe"
-  appels ||--o{ audio : "genere"
-  appels ||--o| satisfaction_apprenants : "produit"
-  appels ||--o| satisfaction_formateurs : "produit"
-  formateurs ||--o{ satisfaction_formateurs : "evalue"
-  inspecteurs ||--o{ satisfaction_apprenants : "supervise"
-  inspecteurs ||--o{ satisfaction_formateurs : "supervise"
-  inspecteurs ||--o{ presences_controle : "supervise"
-  inspecteurs ||--o{ environnement_enquete : "supervise"
-  users ||--o{ satisfaction_apprenants : "realise"
-  users ||--o{ satisfaction_formateurs : "realise"
-  classes ||--o{ satisfaction_apprenants : "concerne"
-  classes ||--o{ satisfaction_formateurs : "concerne"
+  apprenants ||--o{ phases : "traverse"
+  apprenants ||--o{ appel_apprenant : "recoit"
+  users ||--o{ appel_apprenant : "passe"
+  formateurs ||--o{ appel_formateur : "recoit"
+  users ||--o{ appel_formateur : "passe"
+  appel_apprenant ||--o{ audio : "genere"
+  appel_formateur ||--o{ audio : "genere"
+  appel_apprenant ||--o| satisfaction_apprenants : "produit"
+  appel_formateur ||--o| satisfaction_formateurs : "produit"
   apprenants ||--o{ presences_controle : "controle"
   classes ||--o{ presences_controle : "concerne"
   users ||--o{ presences_controle : "effectue"
+  inspecteurs ||--o{ presences_controle : "supervise"
+  inspecteurs ||--o{ environnement_enquete : "supervise"
   classes ||--o{ environnement_enquete : "evaluee"
   users ||--o{ environnement_enquete : "realise"
   classes ||--o{ analyse_classe : "analysee"
@@ -444,6 +431,7 @@ function resetAll(){
   edgeMap.forEach(({el})=>{el.removeAttribute('stroke');el.removeAttribute('stroke-width');el.removeAttribute('opacity');});
   document.getElementById('legend').style.display='none';
 }
+
 function doHL(name){
   const nb=nbrs(name);
   Object.entries(nodeMap).forEach(([n,nd])=>{sN(nd,n===name?C.selected:nb.has(n)?C.related:C.dimmed);});
@@ -471,6 +459,7 @@ function doHL(name){
   box.style.display='block';
   if(dark){box.style.background='rgba(255,255,255,0.03)';box.style.borderColor='#2a2a28';box.style.color='#888';}
 }
+
 function findTN(t){let el=t;while(el&&el!==document){if(el.classList&&el.classList.contains('node')&&el.dataset.tn)return el.dataset.tn;el=el.parentElement;}return null;}
 
 let locked=null,hovered=null;
