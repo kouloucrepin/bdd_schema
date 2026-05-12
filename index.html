@@ -23,15 +23,12 @@ const RELS=[
 ['roles','users','1 → N','définit'],
 ['lieux','beneficiaires','1 → N','localise'],
 ['lieux','prestataires','1 → N','localise'],
-['lieux','formateurs','1 → N','localise'],
 ['lieux','classes','1 → N','accueille'],
 ['formations','formateurs','1 → N','forme'],
 ['formations','prestations','1 → N','porte'],
 ['prestataires','prestations','1 → N','exécute'],
 ['beneficiaires','prestations','1 → N','commande'],
-['beneficiaires','apprenants','1 → N','accueille'],
 ['prestations','classes','1 → N','organise'],
-['formateurs','classes','1 → N','anime'],
 ['classes','apprenants','1 → N','contient'],
 ['apprenants','phases','1 → N','traverse'],
 ['apprenants','appel_apprenant','1 → N','reçoit'],
@@ -79,7 +76,6 @@ const diagram=`erDiagram
     VARCHAR telephone
     VARCHAR email
     VARCHAR ville
-    VARCHAR departement
     VARCHAR password
     BOOLEAN is_active
     TIMESTAMPTZ created_at
@@ -144,7 +140,6 @@ const diagram=`erDiagram
   formateurs {
     VARCHAR formateur_id PK
     VARCHAR formation_id FK
-    VARCHAR lieu_id FK
     VARCHAR nom_formateur
     VARCHAR telephone
     VARCHAR email
@@ -161,8 +156,6 @@ const diagram=`erDiagram
     INTEGER nb_apprenants_inscrits
     NUMERIC taux_inscription
     NUMERIC taux_avancement
-    NUMERIC taux_presence
-    NUMERIC taux_participation
     VARCHAR statut
     DATE date_demarrage
     DATE date_fin
@@ -172,16 +165,12 @@ const diagram=`erDiagram
   classes {
     VARCHAR classe_id PK
     VARCHAR prestation_id FK
-    VARCHAR formateur_id FK
     VARCHAR lieu_id FK
     VARCHAR cohorte
     VARCHAR statut
-    NUMERIC taux_presence
-    NUMERIC taux_participation
   }
   apprenants {
     VARCHAR apprenant_id PK
-    VARCHAR beneficiaire_id FK
     VARCHAR classe_id FK
     VARCHAR cohorte
     VARCHAR nom_prenom
@@ -352,15 +341,12 @@ const diagram=`erDiagram
   roles ||--o{ users : "definit"
   lieux ||--o{ beneficiaires : "localise"
   lieux ||--o{ prestataires : "localise"
-  lieux ||--o{ formateurs : "localise"
   lieux ||--o{ classes : "accueille"
   formations ||--o{ formateurs : "forme"
   formations ||--o{ prestations : "porte"
   prestataires ||--o{ prestations : "execute"
   beneficiaires ||--o{ prestations : "commande"
-  beneficiaires ||--o{ apprenants : "accueille"
   prestations ||--o{ classes : "organise"
-  formateurs ||--o{ classes : "anime"
   classes ||--o{ apprenants : "contient"
   apprenants ||--o{ phases : "traverse"
   apprenants ||--o{ appel_apprenant : "recoit"
