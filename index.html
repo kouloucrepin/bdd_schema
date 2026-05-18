@@ -35,8 +35,10 @@ const RELS=[
 ['users','appel_apprenant','1 → N','passe'],
 ['formateurs','appel_formateur','1 → N','reçoit'],
 ['users','appel_formateur','1 → N','passe'],
+['users','appel_cga','1 → N','passe'],
 ['appel_apprenant','audio','1 → N','génère'],
 ['appel_formateur','audio','1 → N','génère'],
+['appel_cga','audio','1 → N','génère'],
 ['appel_apprenant','satisfaction_apprenants','1 → 1','produit'],
 ['appel_formateur','satisfaction_formateurs','1 → 1','produit'],
 ['apprenants','presences_controle','1 → N','contrôle'],
@@ -206,10 +208,36 @@ const diagram=`erDiagram
     DATE date_appel
     VARCHAR statut_appel
   }
+  appel_cga {
+    VARCHAR id PK
+    VARCHAR user_id FK
+    TIMESTAMPTZ created_at
+    TIMESTAMPTZ updated_at
+    VARCHAR numero
+    VARCHAR raison_social
+    VARCHAR sigle
+    VARCHAR niu
+    VARCHAR activite_principale
+    VARCHAR regime
+    VARCHAR cri
+    VARCHAR centre_de_ratachement
+    VARCHAR ville
+    VARCHAR telephone
+    BOOLEAN is_active
+    VARCHAR statut
+    TIMESTAMPTZ rappel_at
+    TEXT audio_file
+    TIMESTAMPTZ locked_at
+    VARCHAR locked_by
+    BOOLEAN indisponible
+    BOOLEAN interet
+    BOOLEAN mauvais_numero
+  }
   audio {
     VARCHAR audio_id PK
     VARCHAR appel_apprenant_id FK
     VARCHAR appel_formateur_id FK
+    VARCHAR appel_cga_id FK
     TEXT fichier_audio
     DATE date
     TIME heure_debut
@@ -353,8 +381,10 @@ const diagram=`erDiagram
   users ||--o{ appel_apprenant : "passe"
   formateurs ||--o{ appel_formateur : "recoit"
   users ||--o{ appel_formateur : "passe"
+  users ||--o{ appel_cga : "passe"
   appel_apprenant ||--o{ audio : "genere"
   appel_formateur ||--o{ audio : "genere"
+  appel_cga ||--o{ audio : "genere"
   appel_apprenant ||--o| satisfaction_apprenants : "produit"
   appel_formateur ||--o| satisfaction_formateurs : "produit"
   apprenants ||--o{ presences_controle : "controle"
